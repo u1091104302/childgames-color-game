@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>顏色小冒險 🌈</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 背景動畫層 -->
+    <div class="bg-layer">
+        <div class="cloud cloud-1">☁️</div>
+        <div class="cloud cloud-2">☁️</div>
+        <div class="cloud cloud-3">☁️</div>
+        <div class="star star-1">✨</div>
+        <div class="star star-2">✨</div>
+    </div>
+
+    <!-- 彩帶慶祝層 -->
+    <div class="confetti-layer" id="confettiLayer"></div>
+
+    <!-- 計時器顯示 -->
+    <div class="timer-display" id="timerDisplay" hidden>
+        <span class="timer-icon">⏰</span>
+        <span class="timer-value" id="timerValue">15:00</span>
+    </div>
+
+    <!-- 開始畫面 -->
+    <div class="screen start-screen active" id="startScreen">
+        <div class="center-content">
+            <div class="mascot">🦄</div>
+            <h1 class="game-title">顏色小冒險</h1>
+            <p class="subtitle">和独角兽一起尋找顏色吧！</p>
+            <button class="big-btn start-btn" id="startBtn">
+                <span class="btn-icon">🎮</span>
+                <span class="btn-text">開始遊戲</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 遊戲畫面 -->
+    <div class="screen game-screen" id="gameScreen">
+        <!-- 動物角色區 -->
+        <div class="char-zone">
+            <div class="mascot mascot-small" id="gameMascot">🐶</div>
+            <div class="speech-bubble" id="speechBubble">
+                <span id="speechText"></span>
+            </div>
+        </div>
+
+        <!-- 遊戲內容區 -->
+        <div class="game-area" id="gameArea">
+            <!-- Level 1: 找顏色 -->
+            <div class="level level-1" id="level1">
+                <div class="char-grid" id="charGrid"></div>
+            </div>
+
+            <!-- Level 2: 配對顏色 -->
+            <div class="level level-2" id="level2">
+                <div class="target-char">
+                    <div class="target-emoji" id="targetEmoji">🐰</div>
+                    <div class="target-speech" id="targetSpeech">我喜歡紅色！</div>
+                </div>
+                <div class="balloon-row" id="balloonRow"></div>
+            </div>
+
+            <!-- Level 3: 顏色小球 -->
+            <div class="level level-3" id="level3">
+                <div class="bubble-grid" id="bubbleGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 關卡完成畫面 -->
+    <div class="screen level-clear-screen" id="levelClearScreen">
+        <div class="center-content">
+            <div class="big-emoji">🎉</div>
+            <h2 class="clear-title">太棒了！</h2>
+            <div class="stars" id="clearStars">⭐⭐⭐</div>
+            <button class="big-btn next-btn" id="nextBtn">
+                <span class="btn-icon">➡️</span>
+                <span class="btn-text">下一關</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 遊戲完成畫面 -->
+    <div class="screen complete-screen" id="completeScreen">
+        <div class="center-content">
+            <div class="rainbow">🌈</div>
+            <div class="big-emoji">🏆</div>
+            <h2 class="complete-title">顏色小達人！</h2>
+            <p class="complete-msg">你好厲害喔！</p>
+            <button class="big-btn restart-btn" id="restartBtn">
+                <span class="btn-icon">🔄</span>
+                <span class="btn-text">再玩一次</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 時間到畫面 -->
+    <div class="screen timeup-screen" id="timeupScreen">
+        <div class="center-content">
+            <div class="big-emoji">🌙</div>
+            <h2 class="timeup-title">時間到了</h2>
+            <p class="timeup-msg">你今天很努力喔！<br>我們下次再玩吧！</p>
+            <div class="goodnight">🌟 晚安！🌟</div>
+            <button class="big-btn restart-btn" id="timeupRestartBtn">
+                <span class="btn-icon">🌅</span>
+                <span class="btn-text">明天再見</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="js/audio.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>

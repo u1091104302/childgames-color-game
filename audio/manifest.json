@@ -1,0 +1,37 @@
+{
+    "_comment": "預錄語音檔案清單 - 將 MP3 檔案放在 audio/ 資料夾，並在此對應",
+    "welcome": "audio/welcome.mp3",
+    "level1_start": "audio/level1_start.mp3",
+    "level2_start": "audio/level2_start.mp3",
+    "level3_start": "audio/level3_start.mp3",
+    
+    "question_red": "audio/question_red.mp3",
+    "question_yellow": "audio/question_yellow.mp3",
+    "question_blue": "audio/question_blue.mp3",
+    "question_green": "audio/question_green.mp3",
+    "question_orange": "audio/question_orange.mp3",
+    "question_purple": "audio/question_purple.mp3",
+    "question_pink": "audio/question_pink.mp3",
+    "question_skyblue": "audio/question_skyblue.mp3",
+    "question_brown": "audio/question_brown.mp3",
+    "question_gray": "audio/question_gray.mp3",
+    "question_teal": "audio/question_teal.mp3",
+    "question_lavender": "audio/question_lavender.mp3",
+    
+    "correct_1": "audio/correct_1.mp3",
+    "correct_2": "audio/correct_2.mp3",
+    "correct_3": "audio/correct_3.mp3",
+    "correct_4": "audio/correct_4.mp3",
+    "correct_5": "audio/correct_5.mp3",
+    
+    "wrong_1": "audio/wrong_1.mp3",
+    "wrong_2": "audio/wrong_2.mp3",
+    "wrong_3": "audio/wrong_3.mp3",
+    
+    "level_clear": "audio/level_clear.mp3",
+    "complete": "audio/complete.mp3",
+    "time_up": "audio/time_up.mp3",
+    "time_reminder_5": "audio/time_reminder_5.mp3",
+    "time_reminder_10": "audio/time_reminder_10.mp3",
+    "time_warning_2": "audio/time_warning_2.mp3"
+}
