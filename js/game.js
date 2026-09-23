@@ -52,6 +52,9 @@ const Game = {
     correctIndex: 0,
     isLocked: false, // 防止連點
     
+    // 當前問句（用於重播）
+    currentSpeechText: '',
+    
     // 元素引用
     elements: {}
 };
@@ -218,7 +221,9 @@ Game.generateLevel1 = function(colors, animal) {
 
     // 播放問題語音
     const colorSpeech = ColorSpeech[Game.correctColor];
-    speak(`${animal.name}，${colorSpeech}在哪里？快找到${colorSpeech}吧！`);
+    const questionText = `${animal.name}，${colorSpeech}在哪里？快找到${colorSpeech}吧！`;
+    Game.currentSpeechText = questionText;
+    speak(questionText);
 };
 
 /**
@@ -252,7 +257,9 @@ Game.generateLevel2 = function(colors, animal) {
     });
 
     // 播放問題語音
-    speak(`${animal.name}說：我喜歡${colorSpeech}！哪一個氣球是${colorSpeech}的？`);
+    const questionText2 = `${animal.name}說：我喜歡${colorSpeech}！哪一個氣球是${colorSpeech}的？`;
+    Game.currentSpeechText = questionText2;
+    speak(questionText2);
 };
 
 /**
@@ -302,7 +309,9 @@ Game.generateLevel3 = function(colors, animal) {
 
     // 播放問題語音
     const colorSpeech = ColorSpeech[Game.correctColor];
-    speak(`點點${colorSpeech}泡泡！哪一個泡泡是${colorSpeech}的？`);
+    const questionText3 = `點點${colorSpeech}泡泡！哪一個泡泡是${colorSpeech}的？`;
+    Game.currentSpeechText = questionText3;
+    speak(questionText3);
 };
 
 /**

@@ -361,6 +361,8 @@ function pickRandom(pool) {
  * @param {string} text - 要播放的文字
  * @param {boolean} interrupt - 是否中斷目前播放
  */
+let _audioBlocked = false;
+
 function speak(text, interrupt = false) {
     // 0. 中斷時先停止所有音源
     if (interrupt) {
@@ -371,15 +373,33 @@ function speak(text, interrupt = false) {
     }
     
     // 1. 嘗試使用預錄語音檔
-    if (typeof PreAudio !== 'undefined' && PreAudio.enabled) {
+    if (typeof PreAudio !== 'undefined' && PreAudio.enabled && !_audioBlocked) {
         const key = findPreRecordedKey(text);
-        if (key && PreAudio.play(key)) {
-            return;
+        if (key) {
+            // 嘗試播放，如果自動播放被阻止會回傳 false
+            const success = PreAudio.play(key);
+            if (success) {
+                return; // 預錄語音播放中
+            }
+            // 如果回傳 false，表示自動播放被阻止，繼續使用 TTS
         }
     }
     
     // 2. 備援：使用 Web Speech API
-    TTS.speak(text, false); // interrupt 已在上面處理
+    TTS.speak(text, false);
+}
+
+// 監聽 PreAudio 的自動播放阻止事件
+if (typeof PreAudio !== 'undefined') {
+    const originalPlay = PreAudio.play.bind(PreAudio);
+    PreAudio.play = function(key) {
+        const result = originalPlay(key);
+        // 檢查是否被阻止（通過檢查是否有提示元素）
+        if (document.getElementById('audioHint')) {
+            _audioBlocked = true;
+        }
+        return result;
+    };
 }
 
 /**
@@ -570,6 +590,7 @@ class PreRecordedAudio {
 
         const audio = this.audioCache.get(key);
         this.isPlaying = true;
+        this._lastKey = key;
         
         // 嘗試播放，處理自動播放政策
         audio.play().then(() => {
@@ -580,27 +601,55 @@ class PreRecordedAudio {
             };
         }).catch(e => {
             console.warn('Audio autoplay blocked:', e);
-            // 如果自動播放被阻止，立即解鎖等待下一次用戶互動
+            // 自動播放被阻止 - 顯示提示並回傳 false 讓呼叫者用 TTS 備援
             this.isPlaying = false;
             this.processQueue();
-            
-            // 顯示提示
-            if (!this._showHint) {
-                this._showHint = true;
-                const hint = document.createElement('div');
-                hint.style.cssText = `
-                    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-                    background: rgba(0,0,0,0.8); color: white; padding: 15px 25px;
-                    border-radius: 20px; font-size: 16px; z-index: 1000;
-                    animation: fadeInOut 3s ease-in-out forwards;
-                `;
-                hint.textContent = '👆 點擊畫面啟動語音！';
-                document.body.appendChild(hint);
-                setTimeout(() => hint.remove(), 3000);
-            }
+            this._showHint();
+            return false; // 讓 speak() 知道要備援到 TTS
         });
 
         return true;
+    }
+
+    /**
+     * 顯示可點擊的語音啟動提示
+     */
+    _showHint() {
+        if (this._hintElement) return;
+        
+        const hint = document.createElement('div');
+        hint.id = 'audioHint';
+        hint.style.cssText = `
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.85); color: white; padding: 15px 25px;
+            border-radius: 25px; font-size: 18px; z-index: 1000;
+            font-weight: bold; text-align: center; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        `;
+        hint.innerHTML = '👆 點擊這裡啟動語音！';
+        
+        hint.onclick = () => {
+            hint.remove();
+            this._hintElement = null;
+            _audioBlocked = false; // 重置阻止狀態
+            // 重新播放目前的問句
+            if (typeof Game !== 'undefined' && Game.currentSpeechText) {
+                speak(Game.currentSpeechText);
+            } else {
+                this.processQueue();
+            }
+        };
+        
+        this._hintElement = hint;
+        document.body.appendChild(hint);
+        
+        // 5秒後自動移除
+        setTimeout(() => {
+            if (hint.parentNode) {
+                hint.remove();
+                this._hintElement = null;
+            }
+        }, 5000);
     }
 
     /**
