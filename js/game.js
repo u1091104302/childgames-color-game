@@ -89,7 +89,8 @@ document.addEventListener('DOMContentLoaded', () => {
         targetSpeech: document.getElementById('targetSpeech'),
         balloonRow: document.getElementById('balloonRow'),
         bubbleGrid: document.getElementById('bubbleGrid'),
-        confettiLayer: document.getElementById('confettiLayer')
+        confettiLayer: document.getElementById('confettiLayer'),
+        replayBtn: document.getElementById('replayBtn')
     };
 
     // 綁定事件
@@ -97,6 +98,16 @@ document.addEventListener('DOMContentLoaded', () => {
     Game.elements.nextBtn.addEventListener('pointerdown', Game.nextLevel);
     Game.elements.restartBtn.addEventListener('pointerdown', Game.restart);
     Game.elements.timeupRestartBtn.addEventListener('pointerdown', Game.restart);
+
+    // 重聽按鈕：重複播放目前關卡的問句
+    if (Game.elements.replayBtn) {
+        Game.elements.replayBtn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            if (Game.state === GameState.playing && Game.currentSpeechText) {
+                speak(Game.currentSpeechText, { interrupt: true, preKey: Game.currentPreKey });
+            }
+        });
+    }
 
     // 頁面隱藏時暫停
     document.addEventListener('visibilitychange', Game.handleVisibilityChange);
@@ -219,11 +230,12 @@ Game.generateLevel1 = function(colors, animal) {
         grid.appendChild(card);
     });
 
-    // 播放問題語音
+    // 播放問題語音（明確指定預錄音檔 key，避免文字匹配錯誤）
     const colorSpeech = ColorSpeech[Game.correctColor];
     const questionText = `${animal.name}，${colorSpeech}在哪里？快找到${colorSpeech}吧！`;
     Game.currentSpeechText = questionText;
-    speak(questionText);
+    Game.currentPreKey = 'question_' + Game.correctColor;
+    speak(questionText, { preKey: Game.currentPreKey });
 };
 
 /**
@@ -256,10 +268,11 @@ Game.generateLevel2 = function(colors, animal) {
         row.appendChild(balloon);
     });
 
-    // 播放問題語音
+    // 播放問題語音（明確指定 key）
     const questionText2 = `${animal.name}說：我喜歡${colorSpeech}！哪一個氣球是${colorSpeech}的？`;
     Game.currentSpeechText = questionText2;
-    speak(questionText2);
+    Game.currentPreKey = 'question_' + Game.correctColor;
+    speak(questionText2, { preKey: Game.currentPreKey });
 };
 
 /**
@@ -307,11 +320,12 @@ Game.generateLevel3 = function(colors, animal) {
         grid.appendChild(bubble);
     });
 
-    // 播放問題語音
+    // 播放問題語音（明確指定 key）
     const colorSpeech = ColorSpeech[Game.correctColor];
     const questionText3 = `點點${colorSpeech}泡泡！哪一個泡泡是${colorSpeech}的？`;
     Game.currentSpeechText = questionText3;
-    speak(questionText3);
+    Game.currentPreKey = 'question_' + Game.correctColor;
+    speak(questionText3, { preKey: Game.currentPreKey });
 };
 
 /**
@@ -387,7 +401,7 @@ Game.levelComplete = function() {
     Game.spawnConfetti(50);
     
     const message = pickRandom(EncouragementPool.levelClear);
-    speak(message);
+    speak(message, { preKey: 'level_clear' });
 };
 
 /**
@@ -416,7 +430,7 @@ Game.gameComplete = function() {
     Game.spawnConfetti(80);
     
     const message = pickRandom(EncouragementPool.complete);
-    speak(message);
+    speak(message, { preKey: 'complete' });
 };
 
 /**
@@ -430,7 +444,7 @@ Game.timeUp = function() {
     SFX.playTimeUp();
     
     const message = pickRandom(EncouragementPool.timeUp);
-    speak(message);
+    speak(message, { preKey: 'time_up' });
 };
 
 /**
@@ -456,18 +470,25 @@ Game.startTimer = function() {
         Game.remainingSeconds--;
         Game.updateTimerDisplay();
         
-        // 每 5 分鐘提醒
+        // 每 5 分鐘提醒（依實際剩餘時間選擇正確語音）
         const elapsed = Game.totalSeconds - Game.remainingSeconds;
         if (elapsed > 0 && elapsed % 300 === 0 && elapsed !== Game.lastReminder) {
             Game.lastReminder = elapsed;
-            const remaining = Math.floor(Game.remainingSeconds / 60);
-            const message = pickRandom(EncouragementPool.timeRemain);
-            speak(message, true); // 中斷當前語音
+            const remainMin = Math.ceil(Game.remainingSeconds / 60);
+            let message, preKey;
+            if (remainMin >= 10) {
+                message = '我們已經玩了五分鐘，還有十分鐘喔！';
+                preKey = 'time_reminder_5';
+            } else {
+                message = '已經玩了十分鐘，還有五分鐘喔！';
+                preKey = 'time_reminder_10';
+            }
+            speak(message, { interrupt: true, preKey });
         }
         
         // 剩 2 分鐘預警
         if (Game.remainingSeconds === 120) {
-            speak('還有兩分鐘，再完成最後幾題吧！', true);
+            speak('還有兩分鐘，再完成最後幾題吧！', { interrupt: true, preKey: 'time_warning_2' });
         }
         
         // 時間到

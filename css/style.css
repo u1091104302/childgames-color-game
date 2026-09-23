@@ -266,6 +266,34 @@ html, body {
     100% { transform: scale(1); opacity: 1; }
 }
 
+/* 重聽按鈕 */
+.replay-btn {
+    width: 60px;
+    height: 60px;
+    min-width: 60px;
+    border: none;
+    border-radius: 50%;
+    background: white;
+    font-size: 30px;
+    cursor: pointer;
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+    transition: transform 0.2s;
+    animation: breathe 2.5s infinite ease-in-out;
+}
+
+.replay-btn:active {
+    transform: scale(0.9);
+}
+
+@keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+
 .game-area {
     flex: 1;
     display: flex;

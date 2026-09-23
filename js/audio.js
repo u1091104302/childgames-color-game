@@ -115,6 +115,17 @@ const TTS = {
             this.isSpeaking = true;
             window.speechSynthesis.speak(utterance);
         }
+
+        // 看門狗：某些瀏覽器 onend 可能不觸發，逾時強制推進佇列避免卡死
+        clearTimeout(this._watchdog);
+        const estimate = Math.max(2500, text.length * 400);
+        this._watchdog = setTimeout(() => {
+            if (this.isSpeaking) {
+                try { window.speechSynthesis.cancel(); } catch(e) {}
+                this.isSpeaking = false;
+                this.processQueue();
+            }
+        }, estimate + 2000);
     },
 
     /**
@@ -133,6 +144,17 @@ const TTS = {
             };
             this.isSpeaking = true;
             window.speechSynthesis.speak(next);
+
+            // 看門狗：同 speak()，避免 onend 未觸發時卡佇列
+            clearTimeout(this._watchdog);
+            const est = Math.max(2500, (next.text || '').length * 400);
+            this._watchdog = setTimeout(() => {
+                if (this.isSpeaking) {
+                    try { window.speechSynthesis.cancel(); } catch(e) {}
+                    this.isSpeaking = false;
+                    this.processQueue();
+                }
+            }, est + 2000);
         }
     },
 
@@ -182,9 +204,10 @@ class SoundSynthesizer {
                 this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             } catch (e) {
                 this.enabled = false;
+                return;
             }
         }
-        if (this.audioCtx.state === 'suspended') {
+        if (this.audioCtx && this.audioCtx.state === 'suspended') {
             this.audioCtx.resume();
         }
     }
@@ -358,12 +381,19 @@ function pickRandom(pool) {
 /**
  * 統一語音播放函式
  * 優先使用預錄語音（穩定、離線），否則使用 Web Speech API
- * @param {string} text - 要播放的文字
- * @param {boolean} interrupt - 是否中斷目前播放
+ * @param {string} text - 要播放的文字（TTS 用）
+ * @param {boolean|object} opts - true 表示中斷；或 {interrupt, preKey} 指定預錄音檔
  */
-let _audioBlocked = false;
+function speak(text, opts = {}) {
+    let interrupt = false;
+    let preKey = null;
+    if (typeof opts === 'boolean') {
+        interrupt = opts;
+    } else {
+        interrupt = !!opts.interrupt;
+        preKey = opts.preKey || null;
+    }
 
-function speak(text, interrupt = false) {
     // 0. 中斷時先停止所有音源
     if (interrupt) {
         TTS.cancel();
@@ -372,16 +402,19 @@ function speak(text, interrupt = false) {
         }
     }
     
-    // 1. 嘗試使用預錄語音檔
-    if (typeof PreAudio !== 'undefined' && PreAudio.enabled && !_audioBlocked) {
-        const key = findPreRecordedKey(text);
+    // 1. 嘗試使用預錄語音檔（尚未被瀏覽器阻止時）
+    if (typeof PreAudio !== 'undefined' && PreAudio.enabled && !PreAudio._blocked) {
+        // 優先用呼叫者明確指定的 key（準確），否則靠文字推斷（備援）
+        const key = preKey || findPreRecordedKey(text);
         if (key) {
-            // 嘗試播放，如果自動播放被阻止會回傳 false
-            const success = PreAudio.play(key);
-            if (success) {
-                return; // 預錄語音播放中
+            if (preKey || PreAudio.manifest[key]) {
+                PreAudio._pendingText = text;
+                const ok = PreAudio.play(key);
+                if (ok) {
+                    return; // 預錄語音已接受（播放或排隊）
+                }
             }
-            // 如果回傳 false，表示自動播放被阻止，繼續使用 TTS
+            // manifest 缺檔 → 繼續往下用 TTS
         }
     }
     
@@ -389,40 +422,32 @@ function speak(text, interrupt = false) {
     TTS.speak(text, false);
 }
 
-// 監聽 PreAudio 的自動播放阻止事件
-if (typeof PreAudio !== 'undefined') {
-    const originalPlay = PreAudio.play.bind(PreAudio);
-    PreAudio.play = function(key) {
-        const result = originalPlay(key);
-        // 檢查是否被阻止（通過檢查是否有提示元素）
-        if (document.getElementById('audioHint')) {
-            _audioBlocked = true;
-        }
-        return result;
-    };
-}
-
 /**
  * 根據文字內容查找對應的預錄語音 key
  */
 function findPreRecordedKey(text) {
-    // 顏色問題映射（優先檢查）
+    // 顏色問題映射
+    // ⚠️ 重要：必須按名稱長度「由長到短」匹配！
+    // 否則「粉紅色」會被「紅色」先命中、「天藍色」會被「藍色」先命中
     const colorMap = {
+        '粉紅色': 'question_pink',
+        '天藍色': 'question_skyblue',
+        '青綠色': 'question_teal',
+        '淡紫色': 'question_lavender',
         '紅色': 'question_red',
         '黃色': 'question_yellow',
         '藍色': 'question_blue',
         '綠色': 'question_green',
         '橘色': 'question_orange',
         '紫色': 'question_purple',
-        '粉紅色': 'question_pink',
-        '天藍色': 'question_skyblue',
         '棕色': 'question_brown',
-        '灰色': 'question_gray',
-        '青綠色': 'question_teal',
-        '淡紫色': 'question_lavender'
+        '灰色': 'question_gray'
     };
     
-    for (const [color, key] of Object.entries(colorMap)) {
+    // 依顏色名稱長度排序（長的優先），避免子字串誤匹配
+    const sortedEntries = Object.entries(colorMap).sort((a, b) => b[0].length - a[0].length);
+    
+    for (const [color, key] of sortedEntries) {
         if (text.includes(color) && (text.includes('在哪里') || text.includes('點點') || text.includes('喜歡'))) {
             return key;
         }
@@ -435,6 +460,18 @@ function findPreRecordedKey(text) {
     if (text.includes('第一關')) return 'level1_start';
     if (text.includes('第二關')) return 'level2_start';
     if (text.includes('第三關')) return 'level3_start';
+    
+    // 時間相關（先於鼓勵檢查，避免「完成」等字誤匹配）
+    if (text.includes('時間到了')) return 'time_up';
+    if (text.includes('還有十分鐘') || text.includes('還有10分鐘')) return 'time_reminder_5';
+    if (text.includes('還有五分鐘') || text.includes('還有5分鐘')) return 'time_reminder_10';
+    if (text.includes('還有兩分鐘') || text.includes('還有2分鐘')) return 'time_warning_2';
+    
+    // 遊戲完成（先於關卡完成與鼓勵）
+    if (text.includes('所有關卡') || text.includes('冒險完成')) return 'complete';
+    
+    // 關卡完成
+    if (text.includes('完成')) return 'level_clear';
     
     // 答對鼓勵 - 檢查所有鼓勵池中的關鍵詞
     const correctKeywords = [
@@ -452,15 +489,6 @@ function findPreRecordedKey(text) {
     if (wrongKeywords.some(p => text.includes(p))) {
         return 'wrong_' + (Math.floor(Math.random() * 3) + 1);
     }
-    
-    // 關卡完成
-    if (text.includes('完成') || text.includes('太厲害了！我們繼續')) return 'level_clear';
-    
-    // 時間相關 - 更精確的匹配
-    if (text.includes('時間到了')) return 'time_up';
-    if (text.includes('還有十分鐘') || text.includes('還有10分鐘')) return 'time_reminder_5';
-    if (text.includes('還有五分鐘') || text.includes('還有5分鐘')) return 'time_reminder_10';
-    if (text.includes('還有兩分鐘') || text.includes('還有2分鐘')) return 'time_warning_2';
     
     return null;
 }
@@ -547,6 +575,9 @@ class PreRecordedAudio {
         this.currentAudio = null;
         this.queue = [];
         this.isPlaying = false;
+        this._blocked = false;     // 自動播放是否被瀏覽器阻止
+        this._pendingText = null;  // 記錄原始文字供 TTS 備援
+        this._hintElement = null;
     }
 
     /**
@@ -590,22 +621,30 @@ class PreRecordedAudio {
 
         const audio = this.audioCache.get(key);
         this.isPlaying = true;
+        this.currentAudio = audio; // 記錄供 stop() 使用
         this._lastKey = key;
         
         // 嘗試播放，處理自動播放政策
-        audio.play().then(() => {
-            console.log('Playing:', key);
-            audio.onended = () => {
-                this.isPlaying = false;
-                this.processQueue();
-            };
-        }).catch(e => {
-            console.warn('Audio autoplay blocked:', e);
-            // 自動播放被阻止 - 顯示提示並回傳 false 讓呼叫者用 TTS 備援
+        audio.currentTime = 0;
+        audio.onended = () => {
             this.isPlaying = false;
             this.processQueue();
+        };
+        audio.onerror = () => {
+            this.isPlaying = false;
+        };
+        audio.play().then(() => {
+            console.log('Playing pre-recorded:', key);
+        }).catch(e => {
+            console.warn('Audio autoplay blocked:', e);
+            // 自動播放被阻止：標記狀態、顯示提示、並用 TTS 備援播放原始文字
+            this._blocked = true;
+            this.isPlaying = false;
+            this.queue = [];
             this._showHint();
-            return false; // 讓 speak() 知道要備援到 TTS
+            if (this._pendingText) {
+                TTS.speak(this._pendingText);
+            }
         });
 
         return true;
@@ -631,12 +670,10 @@ class PreRecordedAudio {
         hint.onclick = () => {
             hint.remove();
             this._hintElement = null;
-            _audioBlocked = false; // 重置阻止狀態
-            // 重新播放目前的問句
+            this._blocked = false; // 用戶互動後重置阻止狀態
+            // 重新播放目前的問句（重複說明要找什麼顏色）
             if (typeof Game !== 'undefined' && Game.currentSpeechText) {
-                speak(Game.currentSpeechText);
-            } else {
-                this.processQueue();
+                speak(Game.currentSpeechText, { preKey: Game.currentPreKey || null });
             }
         };
         
@@ -672,6 +709,7 @@ class PreRecordedAudio {
         }
         this.isPlaying = false;
         this.queue = [];
+        this._blocked = false; // 使用者互動後重試預錄語音
     }
 }
 
