@@ -530,3 +530,11 @@ img, video {
 button, .char-card, .balloon, .bubble {
     touch-action: manipulation;
 }
+
+/* 語音提示動畫 */
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+    20% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    80% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+}

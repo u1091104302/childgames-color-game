@@ -559,6 +559,7 @@ class PreRecordedAudio {
         
         if (!this.audioCache.has(key)) {
             const audio = new Audio(audioUrl);
+            audio.preload = 'auto'; // 預載
             this.audioCache.set(key, audio);
         }
 
@@ -567,14 +568,37 @@ class PreRecordedAudio {
             return true;
         }
 
-        this.isPlaying = true;
         const audio = this.audioCache.get(key);
-        audio.play().catch(e => console.warn('Audio play error:', e));
+        this.isPlaying = true;
         
-        audio.onended = () => {
+        // 嘗試播放，處理自動播放政策
+        audio.play().then(() => {
+            console.log('Playing:', key);
+            audio.onended = () => {
+                this.isPlaying = false;
+                this.processQueue();
+            };
+        }).catch(e => {
+            console.warn('Audio autoplay blocked:', e);
+            // 如果自動播放被阻止，立即解鎖等待下一次用戶互動
             this.isPlaying = false;
             this.processQueue();
-        };
+            
+            // 顯示提示
+            if (!this._showHint) {
+                this._showHint = true;
+                const hint = document.createElement('div');
+                hint.style.cssText = `
+                    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+                    background: rgba(0,0,0,0.8); color: white; padding: 15px 25px;
+                    border-radius: 20px; font-size: 16px; z-index: 1000;
+                    animation: fadeInOut 3s ease-in-out forwards;
+                `;
+                hint.textContent = '👆 點擊畫面啟動語音！';
+                document.body.appendChild(hint);
+                setTimeout(() => hint.remove(), 3000);
+            }
+        });
 
         return true;
     }

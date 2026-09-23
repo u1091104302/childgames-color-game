@@ -125,6 +125,16 @@ Game.startGame = function() {
     // 初始化音效
     SFX.init();
 
+    // 嘗試解鎖音訊（觸碰後允許播放）
+    try {
+        const unlockAudio = new Audio('audio/welcome.mp3');
+        unlockAudio.volume = 0.001; // 幾乎聽不到
+        unlockAudio.play().then(() => {
+            unlockAudio.pause();
+            unlockAudio.currentTime = 0;
+        }).catch(e => console.warn('Audio unlock failed:', e));
+    } catch(e) {}
+
     // 開始遊戲
     Game.startLevel(1);
 };
